@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "vault-role"
+        vault.hashicorp.com/agent-inject-secret-db-creds: "secret/data/mysql"
+        vault.hashicorp.com/agent-inject-template-db-creds: |
+          {{- with secret "secret/data/mysql" -}}
+          export MYSQL_DATABASE="{{ .Data.data.MYSQL_DATABASE }}"
+          export MYSQL_ROOT_PASSWORD="{{ .Data.data.MYSQL_ROOT_PASSWORD }}"
+          {{- end }}
+    spec:
+      serviceAccountName: vault-auth
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_DATABASE
+          value: "ourdb"
+        - name: MYSQL_ROOT_PASSWORD
+          value: "root123"
